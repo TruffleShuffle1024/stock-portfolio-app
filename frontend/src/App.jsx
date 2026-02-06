@@ -11,52 +11,66 @@ function App() {
   const [showAddStock, setShowAddStock] = useState(false);
   const [newStock, setNewStock] = useState({ symbol: '', name: '', shares: '', purchasePrice: '' });
 
-  // Simulated API calls (replace with actual backend later)
-  useEffect(() => {
-    // Load sample data
-    const sampleStocks = [
-      { id: 1, symbol: 'AAPL', name: 'Apple Inc.', shares: 50, purchasePrice: 150, currentPrice: 175.50, change: 2.5 },
-      { id: 2, symbol: 'GOOGL', name: 'Alphabet Inc.', shares: 25, purchasePrice: 140, currentPrice: 138.75, change: -1.2 },
-      { id: 3, symbol: 'MSFT', name: 'Microsoft Corp.', shares: 40, purchasePrice: 380, currentPrice: 405.30, change: 1.8 }
-    ];
-    setStocks(sampleStocks);
-  }, []);
+useEffect(() => {
+  // Load stocks from backend
+  fetch(`${API_URL}/api/stocks`)
+    .then(res => res.json())
+    .then(data => setStocks(data))
+    .catch(err => console.error('Error loading stocks:', err));
+}, []);
 
-  const addStock = (e) => {
-    e.preventDefault();
-    if (!newStock.symbol || !newStock.name || !newStock.shares || !newStock.purchasePrice) return;
+const addStock = async (e) => {
+  e.preventDefault();
+  if (!newStock.symbol || !newStock.name || !newStock.shares || !newStock.purchasePrice) return;
+  
+  try {
+    const response = await fetch(`${API_URL}/api/stocks`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          symbol: newStock.symbol.toUpperCase(),
+          name: newStock.name,
+          shares: parseFloat(newStock.shares),
+          purchasePrice: parseFloat(newStock.purchasePrice),
+          currentPrice: parseFloat(newStock.purchasePrice),
+          change: 0
+        })
+    });
     
-    const stock = {
-      id: Date.now(),
-      symbol: newStock.symbol.toUpperCase(),
-      name: newStock.name,
-      shares: parseFloat(newStock.shares),
-      purchasePrice: parseFloat(newStock.purchasePrice),
-      currentPrice: parseFloat(newStock.purchasePrice), // In real app, fetch current price
-      change: 0
-    };
-    
-    setStocks([...stocks, stock]);
+    const addedStock = await response.json();
+    setStocks([...stocks, addedStock]);
     setNewStock({ symbol: '', name: '', shares: '', purchasePrice: '' });
     setShowAddStock(false);
-  };
+  } catch (err) {
+    console.error('Error adding stock:', err);
+  }
+};
 
-  const deleteStock = (id) => {
+  const deleteStock = async (id) => {
+  try {
+    await fetch(`${API_URL}/api/stocks/${id}`, { method: 'DELETE' });
     setStocks(stocks.filter(s => s.id !== id));
-  };
+  } catch (err) {
+    console.error('Error deleting stock:', err);
+  }
+};
 
   const getAIAnalysis = async () => {
-    setLoading(true);
-    // Simulate AI analysis
-    setTimeout(() => {
-      const totalValue = stocks.reduce((sum, s) => sum + (s.shares * s.currentPrice), 0);
-      const totalGain = stocks.reduce((sum, s) => sum + (s.shares * (s.currentPrice - s.purchasePrice)), 0);
-      const gainPercent = ((totalGain / (totalValue - totalGain)) * 100).toFixed(2);
-      
-      setAiInsight(`Portfolio Analysis: Your portfolio is currently worth $${totalValue.toLocaleString('en-US', {minimumFractionDigits: 2})} with a total gain of $${totalGain.toLocaleString('en-US', {minimumFractionDigits: 2})} (${gainPercent}%). ${gainPercent > 5 ? 'Strong performance! Consider taking some profits.' : gainPercent < -5 ? 'Portfolio is underperforming. Review holdings and consider rebalancing.' : 'Portfolio is stable. Continue monitoring.'} Diversification looks ${stocks.length >= 5 ? 'good' : 'limited - consider adding more positions'}.`);
-      setLoading(false);
-    }, 1500);
-  };
+  setLoading(true);
+  try {
+    const response = await fetch(`${API_URL}/api/analyze`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    const data = await response.json();
+    setAiInsight(data.insight);
+  } catch (err) {
+    console.error('Error getting AI analysis:', err);
+    setAiInsight('Unable to get analysis. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+};
 
   const totalPortfolioValue = stocks.reduce((sum, stock) => sum + (stock.shares * stock.currentPrice), 0);
   const totalGainLoss = stocks.reduce((sum, stock) => sum + (stock.shares * (stock.currentPrice - stock.purchasePrice)), 0);
