@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown, PlusCircle, Brain, DollarSign, Activity, Trash2, BarChart3 } from 'lucide-react';
 
+const API_URL = 'https://stock-portfolio-app-production-ee01.up.railway.app';
+
 // Main App Component
 function App() {
   const [stocks, setStocks] = useState([]);
